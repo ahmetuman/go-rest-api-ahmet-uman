@@ -1,83 +1,55 @@
 package main
 
 import (
+	"my-gin-api/database"
+	"my-gin-api/handlers"
 	"my-gin-api/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "my-gin-api/docs"
 )
 
-var books = []models.Book{
-	{ID: "1", Title: "Title 1", Author: "Author 1"},
-	{ID: "2", Title: "Titel 2", Author: "Author 2"},
-}
+// @title Go API with Gin
+// @version 1.0
+// @description This is a simple API using Gin and PostgreSQL
+// @host localhost:8080
+// @BasePath /
 
 func main() {
 	r := gin.Default()
 
+	database.ConnectDatabase()
+
+	// Tables
+	database.DB.AutoMigrate(&models.Book{}, &models.Author{}, &models.Review{})
+
 	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"}) // Testing
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	r.GET("/books", getBooks)
-	r.GET("/books/:id", getBookByID)
-	r.POST("/books", createBook)
-	r.PUT("/books/:id", updateBook)
-	r.DELETE("/books/:id", deleteBook)
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler)) // Docker ile test et ?
+
+	r.GET("/books", handlers.GetBooks)
+	r.GET("/books/:id", handlers.GetBookByID)
+	r.POST("/books", handlers.CreateBook)
+	r.PUT("/books/:id", handlers.UpdateBook)
+	r.DELETE("/books/:id", handlers.DeleteBook)
+
+	r.GET("/authors", handlers.GetAuthors)
+	r.GET("/authors/:id", handlers.GetAuthorByID)
+	r.POST("/authors", handlers.CreateAuthor)
+	r.PUT("/authors/:id", handlers.UpdateAuthor)
+	r.DELETE("/authors/:id", handlers.DeleteAuthor)
+
+	r.GET("/reviews", handlers.GetReviews)
+	r.GET("/reviews/:id", handlers.GetReviewByID)
+	r.POST("/reviews", handlers.CreateReview)
+	r.PUT("/reviews/:id", handlers.UpdateReview)
+	r.DELETE("/reviews/:id", handlers.DeleteReview)
 
 	r.Run(":8080")
-}
-
-func getBooks(c *gin.Context) {
-	c.JSON(http.StatusOK, books)
-}
-
-func getBookByID(c *gin.Context) {
-	id := c.Param("id")
-	for _, book := range books {
-		if book.ID == id {
-			c.JSON(http.StatusOK, book)
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
-}
-
-func createBook(c *gin.Context) {
-	var newBook models.Book
-	if err := c.ShouldBindJSON(&newBook); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	books = append(books, newBook)
-	c.JSON(http.StatusCreated, newBook)
-}
-
-func updateBook(c *gin.Context) {
-	id := c.Param("id")
-	var updatedBook models.Book
-	if err := c.ShouldBindJSON(&updatedBook); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	for i, book := range books {
-		if book.ID == id {
-			books[i] = updatedBook
-			c.JSON(http.StatusOK, updatedBook)
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
-}
-
-func deleteBook(c *gin.Context) {
-	id := c.Param("id")
-	for i, book := range books {
-		if book.ID == id {
-			books = append(books[:i], books[i+1:]...)
-			c.JSON(http.StatusOK, gin.H{"message": "Book deleted"})
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "Book not found"})
 }
